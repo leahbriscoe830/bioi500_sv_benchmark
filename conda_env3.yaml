@@ -1,0 +1,10 @@
+name: sv3
+channels:
+  - defaults
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.10
+  - delly
+  - boost=1.85.0
+  - tiddit

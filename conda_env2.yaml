@@ -1,0 +1,10 @@
+name: sv2
+channels:
+  - defaults
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=2.7
+  - lumpy-sv
+  - manta
+  - boost-cpp=1.85.0

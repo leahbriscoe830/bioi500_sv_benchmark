@@ -1,0 +1,12 @@
+name: TIDDIT_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13.15
+  - tiddit=3.9.5
+  - samtools
+  - samblaster
+  - sambamba
+  - gawk

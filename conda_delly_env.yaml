@@ -1,0 +1,12 @@
+name: delly_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - delly=2.6.0
+  - samtools
+  - samblaster
+  - sambamba
+  - gawk

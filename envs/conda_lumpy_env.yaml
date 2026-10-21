@@ -10,3 +10,4 @@ dependencies:
   - samblaster
   - sambamba
   - gawk
+  - psutil

@@ -8,3 +8,4 @@ dependencies:
   - manta
   - boost-cpp=1.85.0
   - samtools
+  - psutil

@@ -1,0 +1,44 @@
+import subprocess
+import time
+import os
+import psutil
+
+subsamples = [0.01, 0.02, 0.03, 0.04, 0.05] # exact downsample fractions TBD
+times = [] # measure time across 5 subsamples of input bam
+mem_usage = [] # measure memory across 5 subsamples of input bam
+input_bam = '/home/brendonleah/data/HG002.sorted.bam'
+ref_fa = 'data/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna'
+path_to_config = '/home/lbriscoe/miniconda3/envs/manta_env/bin/configManta.py' # use argparse?
+
+for frac in subsamples:
+    # Downsample input bam file: samtools view -b -s 0.01 -o downsampled.bam input.bam
+    subprocess.call(['samtools', 'view', '-b', '-s', str(frac), '-o', '{}_input.bam'.format(frac), input_bam])
+
+    # Configure manta: /path/to/manta/bin/configManta.py --bam=input.bam --referenceFasta=reference.fa --runDir=/path/to/manta_somatic_output
+    subprocess.call([path_to_config, '--bam', '{}_input.bam'.format(frac), '--referenceFasta', ref_fa, '--runDir', 'results/manta/'])
+
+    start_time = time.time()
+    
+    # Run manta: python /path/to/manta_somatic_output/runWorkflow.py -m local -j 8
+    proc = subprocess.Popen(['python', 'results/manta/runWorkflow.py', '-m', 'local']) 
+
+    # Get peak memory for manta workflow process
+    process = psutil.Process(proc.pid)
+    peak_memory = 0
+
+    while proc.poll() is None:
+        memory = process.memory_info().rss
+        if memory > peak_memory:
+                peak_memory = memory
+        time.sleep(0.1)
+
+    # time complexity manta
+    end_time = time.time()
+    times.append(end_time - start_time)
+
+    # memory complexity manta
+    mem_usage.append(peak_memory / (1024.0 ** 2)) # convert to MB
+
+with open('manta_complexity.txt', 'w') as f:
+    for i in range(5):
+        f.write("{}: {}, {}\n".format(subsamples[i], times[i], mem_usage[i]))

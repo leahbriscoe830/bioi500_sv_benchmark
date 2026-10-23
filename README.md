@@ -1,7 +1,7 @@
 # Structural Variant Caller Benchmarking Project
 Project for BIOI500 Advanced Bioinformatics benchmarking structural variant callers
 
-#Overview
+## Overview
 In this project, we will benchmark four different Structural Variant tools on memory usage and runtime. When looking at all the tools, we first need to establish a baseline of operation. For inputs, we are ideally looking at human paired-end sequencing, preferably BAM files. However, after that shared similarity of inputs, the way these programs build alignment and identify SV’s is diverse. The tools we are choosing to test are Delly, Lumpy, Manta, and TIDDIT. For the testing dataset, we chose to go with NIST's Genome in a Bottle.
 
 ## Installation Instructions

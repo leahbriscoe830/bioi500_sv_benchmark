@@ -1,19 +1,36 @@
 import subprocess
 import time
 import os
+import sys
 import psutil
+import argparse
+
+# Function to parse command-line arguments
+def check_arg(args=None):
+    parser = argparse.ArgumentParser(
+        description="Run manta and record runtime and peak memory in a txt."
+    )
+    parser.add_argument(
+        "-i", "--input",
+        help="Input BAM/CRAM file",
+        required=True
+    )
+    return parser.parse_args(args)
+
+# Retrieve command-line arguments
+arguments = check_arg(sys.argv[1:])
+input_bam = arguments.input # '/home/brendonleah/data/HG002.sorted.bam' # maybe this should reference a directory with all the downsampled BAMs, then we can iterate in this script
 
 subsamples = [0.01, 0.02, 0.03, 0.04, 0.05] # exact downsample fractions TBD
 times = [] # measure time across 5 subsamples of input bam
 mem_usage = [] # measure memory across 5 subsamples of input bam
-input_bam = '/home/brendonleah/data/HG002.sorted.bam' # use argparse?
 
 for frac in subsamples:
     # Downsample input bam file: samtools view -b -s 0.01 -o downsampled.bam input.bam
-    subprocess.call(['samtools', 'view', '-b', '-s', str(frac), '-o', '{}_input.bam'.format(frac), input_bam])
+    #subprocess.call(['samtools', 'view', '-b', '-s', str(frac), '-o', '{}_input.bam'.format(frac), input_bam])
 
     # Add dummy read group header: samtools addreplacerg -r '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1' -o output.bam input.bam
-    subprocess.call(['samtools', 'addreplacerg', '-r', '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1', '-o', 'results/lumpy/{}_input_rg.bam'.format(frac), '{}_input.bam'.format(frac)])
+    subprocess.call(['samtools', 'addreplacerg', '-r', '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1', '-o', 'results/lumpy/{}_input_rg.bam'.format(frac), input_bam])
 
     # Index new bam file: samtools index input.bam
     subprocess.call(['samtools', 'index', 'results/lumpy/{}_input_rg.bam'.format(frac)])

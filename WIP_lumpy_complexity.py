@@ -4,60 +4,63 @@ import os
 import sys
 import psutil
 import argparse
+import csv
 
 # Function to parse command-line arguments
 def check_arg(args=None):
     parser = argparse.ArgumentParser(
-        description="Run manta and record runtime and peak memory in a txt."
+        description="Run lumpy and record runtime and peak memory in a txt."
     )
     parser.add_argument(
         "-i", "--input",
-        help="Input BAM/CRAM file",
+        help="Directory where input BAM/CRAM subsampled files are located",
         required=True
     )
     return parser.parse_args(args)
 
 # Retrieve command-line arguments
 arguments = check_arg(sys.argv[1:])
-input_bam = arguments.input # '/home/brendonleah/data/HG002.sorted.bam' # maybe this should reference a directory with all the downsampled BAMs, then we can iterate in this script
+input_dir = arguments.input
 
-subsamples = [0.01, 0.02, 0.03, 0.04, 0.05] # exact downsample fractions TBD
-times = [] # measure time across 5 subsamples of input bam
-mem_usage = [] # measure memory across 5 subsamples of input bam
+for input_bam in os.listdir(input_dir):
+    if input_bam.startswith('HG002.sorted_') and input_bam.endswith('pct.bam'):
 
-for frac in subsamples:
-    # Downsample input bam file: samtools view -b -s 0.01 -o downsampled.bam input.bam
-    #subprocess.call(['samtools', 'view', '-b', '-s', str(frac), '-o', '{}_input.bam'.format(frac), input_bam])
+        # Get full name for each file (minus extension)
+        filename = os.path.splitext(os.path.basename('{}{}'.format(input_dir, input_bam)))[0]
 
-    # Add dummy read group header: samtools addreplacerg -r '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1' -o output.bam input.bam
-    subprocess.call(['samtools', 'addreplacerg', '-r', '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1', '-o', 'results/lumpy/{}_input_rg.bam'.format(frac), input_bam])
+        # Add dummy read group header: samtools addreplacerg -r '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1' -o output.bam input.bam
+        subprocess.call(['samtools', 'addreplacerg', '-r', '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1', '-o', 'results/lumpy/{}_rg.bam'.format(filename), '{}{}'.format(input_dir, input_bam)])
 
-    # Index new bam file: samtools index input.bam
-    subprocess.call(['samtools', 'index', 'results/lumpy/{}_input_rg.bam'.format(frac)])
+        # Index new bam file: samtools index input.bam
+        subprocess.call(['samtools', 'index', 'results/lumpy/{}_rg.bam'.format(filename)])
 
-    start_time = time.time()
+        start_time = time.perf_counter()
 
-    # Run lumpy: lumpyexpress -B my.bam -o output.vcf
-    proc = subprocess.Popen(['lumpyexpress', '-B', 'results/lumpy/{}_input_rg.bam'.format(frac), '-o', 'lumpy_acc.vcf'])
+        # Run lumpy: lumpyexpress -B my.bam -o output.vcf
+        proc = subprocess.Popen(['lumpyexpress', '-B', 'results/lumpy/{}_rg.bam'.format(filename), '-o', 'lumpy_acc.vcf'])
 
-    # Get peak memory for lumpyexpress process
-    process = psutil.Process(proc.pid)
-    peak_memory = 0
+        # Get peak memory for lumpyexpress process
+        process = psutil.Process(proc.pid)
+        peak_memory = 0
 
-    while proc.poll() is None:
-        memory = process.memory_info().rss
-        if memory > peak_memory:
-                peak_memory = memory
-        time.sleep(0.1)
+        while proc.poll() is None:
+            memory = process.memory_info().rss
+            if memory > peak_memory:
+                    peak_memory = memory
+            time.sleep(0.1)
+    
+        # time complexity lumpy
+        end_time = time.perf_counter()
 
-    # time complexity lumpy
-    end_time = time.time()
-    times.append(end_time - start_time)
+        write_header = (
+            not os.path.exists('lumpy_complexity.csv') or os.path.getsize('lumpy_complexity.csv') == 0)
 
-    # memory complexity lumpy
-    mem_usage.append(peak_memory / (1024.0 ** 2)) # convert to MB
-
-# Write complexity data to output file
-with open('lumpy_complexity.txt', 'w') as f:
-    for i in range(5):
-        f.write("{}: {}, {}\n".format(subsamples[i], times[i], mem_usage[i]))
+        with open('lumpy_complexity.csv', 'ab') as csvfile:
+            writer = csv.writer(csvfile)
+            if write_header:
+                writer.writerow([
+                    "input", "runtime_seconds", "peak_memory_mb"
+                ])
+            writer.writerow([
+                input_bam, round(end_time - start_time, 3), peak_memory / (1024.0 ** 2) # convert to MB
+            ])

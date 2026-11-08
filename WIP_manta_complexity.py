@@ -4,6 +4,7 @@ import os
 import sys
 import psutil
 import argparse
+import csv
 
 # Function to parse command-line arguments
 def check_arg(args=None):
@@ -12,7 +13,7 @@ def check_arg(args=None):
     )
     parser.add_argument(
         "-i", "--input",
-        help="Input BAM/CRAM file",
+        help="Directory where input BAM/CRAM subsampled files are located",
         required=True
     )
     parser.add_argument(
@@ -29,43 +30,60 @@ def check_arg(args=None):
 
 # Retrieve command-line arguments
 arguments = check_arg(sys.argv[1:])
-input_bam = arguments.input # '/home/brendonleah/data/HG002.sorted.bam' # maybe this should reference a directory with all the downsampled BAMs, then we can iterate in this script
+input_dir = arguments.input
 ref_fa = arguments.reference # 'data/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna'
-path_to_config = arguments.config_path # '/home/lbriscoe/miniconda3/envs/manta_env/bin/configManta.py'
+path_to_config = arguments.config_path # '/home/user/miniconda3/envs/manta_env/bin/configManta.py'
 
-subsamples = [0.01, 0.02, 0.03, 0.04, 0.05] # exact downsample fractions TBD
-times = [] # measure time across 5 subsamples of input bam
-mem_usage = [] # measure memory across 5 subsamples of input bam
+for input_bam in os.listdir(input_dir):
+    if input_bam.startswith('HG002.sorted_') and input_bam.endswith('pct.bam'):
 
-for frac in subsamples:
-    # Downsample input bam file: samtools view -b -s 0.01 -o downsampled.bam input.bam
-    # subprocess.call(['samtools', 'view', '-b', '-s', str(frac), '-o', '{}_input.bam'.format(frac), input_bam])
+        # Get full name for each file (minus extension)
+        filename = os.path.splitext(os.path.basename('{}{}'.format(input_dir, input_bam)))[0]
 
-    # Configure manta: /path/to/manta/bin/configManta.py --bam=input.bam --referenceFasta=reference.fa --runDir=/path/to/manta_somatic_output
-    subprocess.call([path_to_config, '--bam', input_bam, '--referenceFasta', ref_fa, '--runDir', 'results/manta/'])
+        # Configure manta: /path/to/manta/bin/configManta.py --bam=input.bam --referenceFasta=reference.fa --runDir=/path/to/manta_somatic_output
+        subprocess.call([path_to_config, '--bam', '{}{}'.format(input_dir, input_bam), '--referenceFasta', ref_fa, '--runDir', 'results/manta/{}/'.format(filename)])
 
-    start_time = time.time()
-    
-    # Run manta: python /path/to/manta_somatic_output/runWorkflow.py -m local -j 8
-    proc = subprocess.Popen(['python', 'results/manta/runWorkflow.py', '-m', 'local']) 
+        start_time = time.perf_counter()
+        
+        # Run manta: python /path/to/manta_somatic_output/runWorkflow.py -m local -j 8
+        proc = subprocess.Popen(['python', 'results/manta/{}/runWorkflow.py'.format(filename), '-m', 'local']) 
 
-    # Get peak memory for manta workflow process
-    process = psutil.Process(proc.pid)
-    peak_memory = 0
+        # Get peak memory for manta workflow process
+        root_process = psutil.Process(proc.pid)
+        peak_memory = 0
 
-    while proc.poll() is None:
-        memory = process.memory_info().rss
-        if memory > peak_memory:
-                peak_memory = memory
-        time.sleep(0.1)
+        while proc.poll() is None:
+            try:
+                processes = [root_process]
+                processes.extend(root_process.children(recursive=True))
 
-    # time complexity manta
-    end_time = time.time()
-    times.append(end_time - start_time)
+                current_memory = 0
 
-    # memory complexity manta
-    mem_usage.append(peak_memory / (1024.0 ** 2)) # convert to MB
+                for p in processes:
+                    try:
+                        current_memory += p.memory_info().rss
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
 
-with open('manta_complexity.txt', 'w') as f:
-    for i in range(5):
-        f.write("{}: {} sec, {} MB\n".format(subsamples[i], times[i], mem_usage[i]))
+                peak_memory = max(peak_memory, current_memory)
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+            time.sleep(0.1)
+
+        # time complexity manta
+        end_time = time.perf_counter()
+
+        write_header = (
+            not os.path.exists('manta_complexity.csv') or os.path.getsize('manta_complexity.csv') == 0)
+
+        with open('manta_complexity.csv', 'ab') as csvfile:
+            writer = csv.writer(csvfile)
+            if write_header:
+                writer.writerow([
+                    "input", "runtime_seconds", "peak_memory_mb"
+                ])
+            writer.writerow([
+                input_bam, round(end_time - start_time, 3), peak_memory / (1024.0 ** 2)
+            ])

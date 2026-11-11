@@ -1,4 +1,4 @@
-name: truvari
+name: truvari_env
 channels:
   - bioconda
   - conda-forge

@@ -11,3 +11,5 @@ dependencies:
   - sambamba
   - gawk
   - psutil
+  - bcftools
+  - tabix

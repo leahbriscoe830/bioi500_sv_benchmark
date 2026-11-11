@@ -6,10 +6,11 @@ import psutil
 import argparse
 import csv
 
+# Example command: python WIP_manta_complexity.py -i subsamples/ -r /home/brendonleah/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna -c /home/user/miniconda3/envs/manta_env/bin/configManta.py
 # Function to parse command-line arguments
 def check_arg(args=None):
     parser = argparse.ArgumentParser(
-        description="Run manta and record runtime and peak memory in a txt."
+        description="Run manta and record runtime and peak memory in a csv."
     )
     parser.add_argument(
         "-i", "--input",
@@ -35,15 +36,17 @@ ref_fa = arguments.reference # 'data/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_
 path_to_config = arguments.config_path # '/home/user/miniconda3/envs/manta_env/bin/configManta.py'
 
 for input_bam in os.listdir(input_dir):
-    if input_bam.startswith('HG002.sorted_') and input_bam.endswith('pct.bam'):
+    if input_bam.startswith('HG002.GRCh38.300x_chr20_') and input_bam.endswith('pct.bam'):
 
         # Get full name for each file (minus extension)
         filename = os.path.splitext(os.path.basename('{}{}'.format(input_dir, input_bam)))[0]
+        # Get subsample fraction
+        frac = filename.split('_') # HG002.GRCh38.300x, chr20, 25pct
 
         # Configure manta: /path/to/manta/bin/configManta.py --bam=input.bam --referenceFasta=reference.fa --runDir=/path/to/manta_somatic_output
         subprocess.call([path_to_config, '--bam', '{}{}'.format(input_dir, input_bam), '--referenceFasta', ref_fa, '--runDir', 'results/manta/{}/'.format(filename)])
 
-        start_time = time.perf_counter()
+        start_time = time.time()
         
         # Run manta: python /path/to/manta_somatic_output/runWorkflow.py -m local -j 8
         proc = subprocess.Popen(['python', 'results/manta/{}/runWorkflow.py'.format(filename), '-m', 'local']) 
@@ -73,7 +76,14 @@ for input_bam in os.listdir(input_dir):
             time.sleep(0.1)
 
         # time complexity manta
-        end_time = time.perf_counter()
+        end_time = time.time()
+
+        # Copy vcf into test_vcf directory, rename to appropriate frac name
+        subprocess.call(['cp', 'results/manta/{}/results/variants/diploidSV.vcf.gz'.format(filename), 'test_vcfs/'])
+        subprocess.call(['cp', 'results/manta/{}/results/variants/diploidSV.vcf.gz.tbi'.format(filename), 'test_vcfs/'])
+
+        subprocess.call(['mv', 'test_vcfs/diploidSV.vcf.gz', 'manta_{}.vcf.gz'.format(frac[2])])
+        subprocess.call(['mv', 'test_vcfs/diploidSV.vcf.gz.tbi', 'manta_{}.vcf.gz.tbi'.format(frac[2])])
 
         write_header = (
             not os.path.exists('manta_complexity.csv') or os.path.getsize('manta_complexity.csv') == 0)
@@ -82,8 +92,8 @@ for input_bam in os.listdir(input_dir):
             writer = csv.writer(csvfile)
             if write_header:
                 writer.writerow([
-                    "input", "runtime_seconds", "peak_memory_mb"
+                    "tool", "input", "runtime_seconds", "peak_memory_mb"
                 ])
             writer.writerow([
-                input_bam, round(end_time - start_time, 3), peak_memory / (1024.0 ** 2)
+                'manta', input_bam, round(end_time - start_time, 3), peak_memory / (1024.0 ** 2)
             ])

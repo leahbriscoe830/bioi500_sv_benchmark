@@ -5,7 +5,7 @@ import subprocess
 import time
 import csv
 
-#example command: tiddit --sv   --bam /home/brendonleah/HG002.sorted_25pct.bam   --ref /home/brendonleah/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna   --prefix /home/brendonleah/tiddit_test
+#example command:  python WIP_TIDDIT_complexity.py   -i /home/brendonleah/HG002.sorted_25pct.bam   -o benchmark.csv   -r /home/brendonleah/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna
 
 # Function to parse command-line arguments
 def check_arg(args=None):

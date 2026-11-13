@@ -40,15 +40,18 @@ prefix = "tiddit_calls"
 time_output = "tiddit_time.txt"
 
 
-command = ["tiddit","--sv", "--bam", infile, "--ref", reference,"--prefix", prefix]
+command = ["tiddit","--sv", "--bam", infile, "--ref", reference,"-o", prefix]
 
 start = time.perf_counter()
 
 result = subprocess.run(
     ["/usr/bin/time", "-v", "-o", time_output] + command,
-    stdout=subprocess.DEVNULL,
-    stderr=subprocess.DEVNULL
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True
 )
+
+print(result.stderr)
 
 runtime = time.perf_counter() - start
 

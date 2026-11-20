@@ -11,7 +11,7 @@ LUMPY_SCRIPT="WIP_lumpy_complexity.py"
 
 # Conda environments
 DELLY_ENV="delly_env"
-TIDDIT_ENV="tiddit_env"
+TIDDIT_ENV="TIDDIT_env"
 MANTA_ENV="manta_env"
 LUMPY_ENV="lumpy_env"
 
@@ -20,11 +20,12 @@ BENCHMARK_CSV="benchmark.csv"
 
 
 # Parse arguments
-while getopts "i:r:" opt; do
+while getopts "i:r:c:" opt; do
     case $opt in
         i) INPUT_DIR="$OPTARG" ;;
         r) REFERENCE="$OPTARG" ;;
-        *) echo "Usage: bash run_batch.sh -i input_directory -r reference.fasta"
+        c) MANTA_CONFIG="$OPTARG" ;;
+        *) echo "Usage: bash run_batch.sh -i input_directory -r reference.fasta -c manta_config_path"
            exit 1 ;;
     esac
 done
@@ -41,6 +42,10 @@ if [[ ! -f "$REFERENCE" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$MANTA_CONFIG" ]]; then
+    echo "ERROR: configManta.py file not found"
+    exit 1
+fi
 
 # Initialize Conda for this shell
 source "$(conda info --base)/etc/profile.d/conda.sh"
@@ -84,7 +89,8 @@ for BAM in "${BAM_FILES[@]}"; do
     python "$MANTA_SCRIPT" \
         -i "$BAM" \
         -o "$BENCHMARK_CSV" \
-        -r "$REFERENCE"
+        -r "$REFERENCE" \
+        -c "$MANTA_CONFIG"
 
     conda deactivate
 
@@ -101,5 +107,3 @@ for BAM in "${BAM_FILES[@]}"; do
     conda deactivate
 
 done
-
-

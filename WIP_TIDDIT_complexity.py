@@ -39,8 +39,10 @@ reference = arguments.reference
 prefix = "tiddit_calls"
 time_output = "tiddit_time.txt"
 
+# Get full name for each file (minus extension)
+filename = os.path.splitext(os.path.basename(infile))[0]
 
-command = ["tiddit","--sv", "--bam", infile, "--ref", reference,"-o", prefix]
+command = ["tiddit", "--sv", "--bam", infile, "--ref", reference, "-o", prefix]
 
 start = time.perf_counter()
 
@@ -75,11 +77,11 @@ with open(outfile, "a", newline="") as csvfile:
 
     if write_header:
         writer.writerow([
-            "tool", "input", "reference",
+            "tool", "input",
             "runtime_seconds", "peak_memory_mb", "exit_code"
         ])
 
     writer.writerow([
-        "TIDDIT", infile, reference,
+        "TIDDIT", filename,
         round(runtime, 3), peak_memory, result.returncode
     ])

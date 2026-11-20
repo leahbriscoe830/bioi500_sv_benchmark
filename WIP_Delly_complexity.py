@@ -38,7 +38,10 @@ reference = arguments.reference
 variant_output = "delly_calls.bcf"
 time_output = "delly_time.txt"
 
-command = ["delly", "sr", "-g", reference,"-o", variant_output,infile]
+# Get full name for each file (minus extension)
+filename = os.path.splitext(os.path.basename(infile))[0]
+
+command = ["delly", "sr", "-g", reference, "-o", variant_output, infile]
 # Measure wall-clock runtime and GNU time resource usage
 start = time.perf_counter()
 
@@ -71,13 +74,12 @@ with open(outfile, "a", newline="") as csvfile:
 
     if write_header:
         writer.writerow([
-            "tool", "input", "reference",
+            "tool", "input",
             "runtime_seconds", "peak_memory_mb", "exit_code"
         ])
 
     writer.writerow([
-        "Delly", infile, reference,
+        "Delly", filename,
         round(runtime, 3), peak_memory_mb, result.returncode
     ])
-
-
+    

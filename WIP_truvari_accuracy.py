@@ -2,6 +2,8 @@ import subprocess
 import os
 import sys
 import argparse
+import csv
+import json
 
 # Example: python WIP_truvari_accuracy.py -i test_vcfs/ -r /home/brendonleah/data/GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna -t data/HG002_GRCh38_v5.0q_chr20.vcf.gz -b data/HG002_GRCh38_v5.0q_stvar.benchmark.bed
 # Function to parse command-line arguments
@@ -47,3 +49,26 @@ for test_vcf in os.listdir(input_dir):
 
         # Run truvari on input vcf: 
         subprocess.run(['truvari', 'bench', '-b', truth_vcf, '-c', f'{input_dir}/{test_vcf}', '-f', ref_fa, '--includebed', bench_bed, '-o', f'results/truvari/{tool_frac[0]}/'])
+
+        # Read in stats
+        with open(f"results/truvari/{tool_frac[0]}/summary.json", "r", encoding="utf-8") as file:
+            data = json.load(file)
+            precision = data['precision']
+            recall = data['recall']
+            f1 = data['f1']
+
+        # Write to CSV
+        write_header = (
+            not os.path.exists('acc_benchmark.csv') or os.path.getsize('acc_benchmark.csv') == 0)
+
+        with open('acc_benchmark.csv', "a", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+
+            if write_header:
+                writer.writerow([
+                    "input", "precision", "recall", "f1"
+                ])
+                
+            writer.writerow([
+                tool_frac[0], precision, recall, f1
+            ]) 

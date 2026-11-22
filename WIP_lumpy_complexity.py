@@ -41,6 +41,9 @@ filename = os.path.splitext(os.path.basename(infile))[0]
 # Get subsample fraction
 frac = filename.split('_') # HG002.GRCh38.300x, chr20, 25pct
 
+if not os.path.isdir('results/lumpy/'):
+    os.makedirs('results/lumpy/')
+
 # Add dummy read group header: samtools addreplacerg -r '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1' -o output.bam input.bam
 subprocess.call(['samtools', 'addreplacerg', '-r', '@RG\tID:sample1\tLB:lib1\tPL:ILLUMINA\tSM:sample1', '-o', 'results/lumpy/{}_rg.bam'.format(filename), infile])
 

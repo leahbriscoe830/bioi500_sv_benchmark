@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #The purpose of this script will be to automate testing of tools and pipe results into future testing
-# Example:chmod +x run_batch.sh
+# Example:chmod +x Automation.sh
+#./Automation.sh
 
 # Hard-coded script paths
 DELLY_SCRIPT="WIP_Delly_complexity.py"

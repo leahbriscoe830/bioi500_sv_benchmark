@@ -11,5 +11,4 @@ dependencies:
   - sambamba
   - gawk
   - psutil
-  - bcftools
-  - tabix
+  - bioconda::bcftools=1.17
